@@ -1,5 +1,5 @@
 {
-  "name": "allow2automate-cmd",
+  "name": "@allow2/allow2automate-cmd",
   "shortName": "cmd",
   "version": "0.0.2",
   "description": "Enable Allow2Automate the ability to run cmds and scripts on the local device",
@@ -18,14 +18,63 @@
     "type": "git",
     "url": "https://github.com/Allow2/allow2automate-cmd"
   },
+  "bugs": {
+    "url": "https://github.com/Allow2/allow2automate-cmd/issues"
+  },
+  "homepage": "https://github.com/Allow2/allow2automate-cmd#readme",
   "allow2Token": "????",
   "keywords": [
     "allow2automate",
     "allow2",
-    "cmd"
+    "cmd",
+    "plugin",
+    "utilities",
+    "parental-controls",
+    "automation"
   ],
-  "author": "Allow2",
-  "license": "Apache-2.0",
+  "author": {
+    "name": "Allow2",
+    "url": "https://allow2.com"
+  },
+  "license": "MIT",
+  "allow2automate": {
+    "plugin": true,
+    "pluginId": "allow2automate-cmd",
+    "displayName": "Command Executor",
+    "category": "Utilities",
+    "permissions": [
+      "system",
+      "configuration",
+      "filesystem"
+    ],
+    "minAppVersion": "2.0.0",
+    "api": {
+      "actions": [
+        {
+          "id": "execute",
+          "name": "Execute Command",
+          "description": "Execute a command or script on the local device"
+        },
+        {
+          "id": "scheduleScript",
+          "name": "Schedule Script",
+          "description": "Schedule a script to run at specific times"
+        }
+      ],
+      "triggers": [
+        {
+          "id": "commandCompleted",
+          "name": "Command Completed",
+          "description": "Triggered when a command execution completes"
+        },
+        {
+          "id": "commandFailed",
+          "name": "Command Failed",
+          "description": "Triggered when a command execution fails"
+        }
+      ]
+    }
+  },
   "dependencies": {
     "@babel/runtime": "^7.13.9"
   },
