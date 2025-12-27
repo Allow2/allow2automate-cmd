@@ -11,56 +11,304 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
 'use strict';
+
 import TabContent from './Components/TabContent';
-import { spawn } from 'child_process';
+import ScriptManager from './ScriptManager';
+import StateMonitor from './StateMonitor';
+import PollingMonitor from './PollingMonitor';
 
 function plugin(context) {
 
-    var ssh = {
-        test: '2'
+    var cmd = {};
+    var state = null;
+    var scriptManager = null;
+    var stateMonitor = null;
+    var pollingMonitor = null;
+
+    //
+    // onLoad: called on the main process when this plugin is loaded
+    //
+    cmd.onLoad = function(loadState) {
+        console.log('cmd.onLoad', loadState);
+
+        state = loadState || {
+            scripts: {},
+            triggers: {},
+            monitors: {},
+            sshConfigs: {}
+        };
+
+        // Initialize script manager
+        scriptManager = new ScriptManager({
+            onScriptOutput: (data) => {
+                console.log('Script output:', data);
+                // Could send to renderer for display
+                context.sendToRenderer && context.sendToRenderer('scriptOutput', data);
+            },
+            onScriptComplete: (data) => {
+                console.log('Script complete:', data);
+                context.sendToRenderer && context.sendToRenderer('scriptComplete', data);
+            },
+            onScriptError: (data) => {
+                console.error('Script error:', data);
+                context.sendToRenderer && context.sendToRenderer('scriptError', data);
+            }
+        });
+
+        // Initialize state monitor (Mode 1)
+        stateMonitor = new StateMonitor(
+            {
+                onTriggerFired: async (data) => {
+                    console.log('Trigger fired:', data);
+
+                    // Execute associated script
+                    const trigger = state.triggers[data.triggerId];
+                    if (trigger && trigger.scriptId) {
+                        const script = state.scripts[trigger.scriptId];
+                        if (script) {
+                            try {
+                                await scriptManager.execute(script, data.params);
+                            } catch (error) {
+                                console.error('Error executing trigger script:', error);
+                            }
+                        }
+                    }
+
+                    context.sendToRenderer && context.sendToRenderer('triggerFired', data);
+                },
+                onMonitorError: (data) => {
+                    console.error('State monitor error:', data);
+                    context.sendToRenderer && context.sendToRenderer('monitorError', data);
+                }
+            },
+            context.allow2
+        );
+
+        // Initialize polling monitor (Mode 2)
+        pollingMonitor = new PollingMonitor(
+            {
+                onMonitorRun: (data) => {
+                    console.log('Monitor run:', data);
+                    context.sendToRenderer && context.sendToRenderer('monitorRun', data);
+                },
+                onConditionMet: (data) => {
+                    console.log('Monitor condition met:', data);
+                    context.sendToRenderer && context.sendToRenderer('conditionMet', data);
+                },
+                onMonitorError: (data) => {
+                    console.error('Polling monitor error:', data);
+                    context.sendToRenderer && context.sendToRenderer('monitorError', data);
+                }
+            },
+            scriptManager,
+            context.allow2
+        );
+
+        // Load saved triggers and monitors
+        Object.values(state.triggers || {}).forEach(trigger => {
+            stateMonitor.addTrigger(trigger);
+        });
+
+        Object.values(state.monitors || {}).forEach(monitor => {
+            pollingMonitor.addMonitor(monitor);
+        });
+
+        // Start monitoring
+        stateMonitor.start();
+        pollingMonitor.startAll();
+
+        // IPC handlers for renderer
+        setupIPCHandlers(context);
+
+        console.log('CMD plugin initialized');
     };
 
-
-    const ls = spawn('ls', ['-lh', '/usr']);
-
-    ls.stdout.on('data', (data) => {
-        console.log(`stdout: ${data}`);
-    });
-
-    ls.stderr.on('data', (data) => {
-        console.error(`stderr: ${data}`);
-    });
-
-    ls.on('close', (code) => {
-        console.log(`child process exited with code ${code}`);
-    });
+    //
+    // newState: called on the main process when the persisted state is updated
+    //
+    cmd.newState = function(newState) {
+        state = newState;
+        console.log('cmd.newState', newState);
+    };
 
     //
-    // onLoad (optional): called on the main process when this plugin is loaded
+    // onSetEnabled: called when this plugin is enabled/disabled
     //
-    // ssh.onLoad = function() {
-    //     // nop
-    // };
+    cmd.onSetEnabled = function(enabled) {
+        console.log('cmd.onSetEnabled', enabled);
+
+        if (enabled) {
+            stateMonitor?.start();
+            pollingMonitor?.startAll();
+        } else {
+            stateMonitor?.stop();
+            pollingMonitor?.stopAll();
+        }
+    };
 
     //
-    // onSetEnabled (optional): called by the electron main process when this plugin is enabled/disabled
+    // onUnload: called if the user is deleting the plugin
     //
-    // ssh.onSetEnabled = function(enabled) {
-    //     // nop
-    // };
+    cmd.onUnload = function(callback) {
+        console.log('cmd.onUnload');
+
+        // Cleanup
+        scriptManager?.cleanup();
+        stateMonitor?.cleanup();
+        pollingMonitor?.cleanup();
+
+        callback(null);
+    };
 
     //
-    // onUnload (optional): called if the user is (removing) deleting the plugin, use this to clean up before the plugin disappears
+    // Setup IPC handlers for communication with renderer
     //
-    // ssh.onUnload = function(callback) {
-    //     // nop
-    //     callback(null);
-    // };
+    function setupIPCHandlers(context) {
 
-    return ssh;
+        // Save script
+        context.ipcMain.on('saveScript', async (event, script) => {
+            try {
+                state.scripts[script.id] = script;
+                context.configurationUpdate(state);
+                return [null, { success: true, script }];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Delete script
+        context.ipcMain.on('deleteScript', async (event, scriptId) => {
+            try {
+                delete state.scripts[scriptId];
+                context.configurationUpdate(state);
+                return [null, { success: true }];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Execute script
+        context.ipcMain.on('executeScript', async (event, { scriptId, params }) => {
+            try {
+                const script = state.scripts[scriptId];
+                if (!script) {
+                    return [new Error('Script not found')];
+                }
+
+                const result = await scriptManager.execute(script, params);
+                return [null, result];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Test SSH connection
+        context.ipcMain.on('testSSH', async (event, sshConfig) => {
+            try {
+                const result = await scriptManager.testSSHConnection(sshConfig);
+                return [null, result];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Save SSH config
+        context.ipcMain.on('saveSSHConfig', async (event, config) => {
+            try {
+                state.sshConfigs[config.id] = config;
+                context.configurationUpdate(state);
+                return [null, { success: true, config }];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Add trigger
+        context.ipcMain.on('addTrigger', async (event, trigger) => {
+            try {
+                state.triggers[trigger.id] = trigger;
+                stateMonitor.addTrigger(trigger);
+                context.configurationUpdate(state);
+                return [null, { success: true, trigger }];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Update trigger
+        context.ipcMain.on('updateTrigger', async (event, { triggerId, updates }) => {
+            try {
+                state.triggers[triggerId] = { ...state.triggers[triggerId], ...updates };
+                stateMonitor.updateTrigger(triggerId, updates);
+                context.configurationUpdate(state);
+                return [null, { success: true }];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Remove trigger
+        context.ipcMain.on('removeTrigger', async (event, triggerId) => {
+            try {
+                delete state.triggers[triggerId];
+                stateMonitor.removeTrigger(triggerId);
+                context.configurationUpdate(state);
+                return [null, { success: true }];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Add monitor
+        context.ipcMain.on('addMonitor', async (event, monitor) => {
+            try {
+                state.monitors[monitor.id] = monitor;
+                pollingMonitor.addMonitor(monitor);
+                context.configurationUpdate(state);
+                return [null, { success: true, monitor }];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Update monitor
+        context.ipcMain.on('updateMonitor', async (event, { monitorId, updates }) => {
+            try {
+                state.monitors[monitorId] = { ...state.monitors[monitorId], ...updates };
+                pollingMonitor.updateMonitor(monitorId, updates);
+                context.configurationUpdate(state);
+                return [null, { success: true }];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Remove monitor
+        context.ipcMain.on('removeMonitor', async (event, monitorId) => {
+            try {
+                delete state.monitors[monitorId];
+                pollingMonitor.removeMonitor(monitorId);
+                context.configurationUpdate(state);
+                return [null, { success: true }];
+            } catch (error) {
+                return [error];
+            }
+        });
+
+        // Get monitor status
+        context.ipcMain.on('getMonitorStatus', async (event, monitorId) => {
+            try {
+                const status = pollingMonitor.getStatus(monitorId);
+                return [null, status];
+            } catch (error) {
+                return [error];
+            }
+        });
+    }
+
+    return cmd;
 }
 
 module.exports = {

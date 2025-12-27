@@ -1,10 +1,10 @@
 import { babel } from '@rollup/plugin-babel';
 import commonjs from '@rollup/plugin-commonjs';
-import external from 'rollup-plugin-peer-deps-external'
-//import postcss from 'rollup-plugin-postcss'
+import external from 'rollup-plugin-peer-deps-external';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
+import json from '@rollup/plugin-json';
 
-import pkg from './package.json'
+import pkg from './package.json';
 
 export default {
     input: 'src/index.js',
@@ -20,18 +20,16 @@ export default {
     ],
     plugins: [
         external(),
-        // postcss({
-        //     modules: true
-        // }),,
-        nodeResolve(),
+        json(),
+        nodeResolve({
+            preferBuiltins: true
+        }),
         commonjs({
-            //exclude: 'src/**',
             include: 'node_modules/**'
         }),
         babel({
             babelHelpers: 'runtime',
             exclude: /node_modules/,
-            //exclude: 'node_modules/**'
         }),
         [
             "@babel/plugin-transform-runtime",
@@ -44,5 +42,10 @@ export default {
             }
         ]
     ],
-    external: Object.keys(pkg.peerDependencies || {})
-}
+    external: [
+        ...Object.keys(pkg.peerDependencies || {}),
+        ...Object.keys(pkg.dependencies || {}),
+        'child_process',
+        '@material-ui/lab/Alert'
+    ]
+};

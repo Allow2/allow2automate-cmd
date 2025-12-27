@@ -1,8 +1,8 @@
 {
   "name": "@allow2/allow2automate-cmd",
   "shortName": "cmd",
-  "version": "0.0.2",
-  "description": "Enable Allow2Automate the ability to run cmds and scripts on the local device",
+  "version": "1.0.0",
+  "description": "Execute local and remote commands/scripts triggered by Allow2 state changes or on scheduled intervals",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
   "jsnext:main": "dist/index.es.js",
@@ -27,10 +27,11 @@
     "allow2automate",
     "allow2",
     "cmd",
+    "ssh",
+    "automation",
     "plugin",
-    "utilities",
     "parental-controls",
-    "automation"
+    "scripting"
   ],
   "author": {
     "name": "Allow2",
@@ -40,10 +41,11 @@
   "allow2automate": {
     "plugin": true,
     "pluginId": "allow2automate-cmd",
-    "displayName": "Command Executor",
-    "category": "Utilities",
+    "displayName": "Command & Script Executor",
+    "category": "Automation",
     "permissions": [
       "system",
+      "network",
       "configuration",
       "filesystem"
     ],
@@ -51,37 +53,56 @@
     "api": {
       "actions": [
         {
-          "id": "execute",
-          "name": "Execute Command",
-          "description": "Execute a command or script on the local device"
+          "id": "executeScript",
+          "name": "Execute Script",
+          "description": "Execute a local or remote script"
         },
         {
-          "id": "scheduleScript",
-          "name": "Schedule Script",
-          "description": "Schedule a script to run at specific times"
+          "id": "createScript",
+          "name": "Create Script",
+          "description": "Create a new script with parameters"
+        },
+        {
+          "id": "testSSH",
+          "name": "Test SSH Connection",
+          "description": "Test SSH connection to remote host"
         }
       ],
       "triggers": [
         {
-          "id": "commandCompleted",
-          "name": "Command Completed",
-          "description": "Triggered when a command execution completes"
+          "id": "quotaStateChange",
+          "name": "Quota State Changed",
+          "description": "Triggered when child quota transitions (positive to zero, etc.)"
         },
         {
-          "id": "commandFailed",
-          "name": "Command Failed",
-          "description": "Triggered when a command execution fails"
+          "id": "pollingConditionMet",
+          "name": "Polling Condition Met",
+          "description": "Triggered when polling script returns true condition"
+        },
+        {
+          "id": "scriptExecuted",
+          "name": "Script Executed",
+          "description": "Triggered when a script execution completes"
+        },
+        {
+          "id": "scriptFailed",
+          "name": "Script Failed",
+          "description": "Triggered when a script execution fails"
         }
       ]
     }
   },
   "dependencies": {
-    "@babel/runtime": "^7.13.9"
+    "@babel/runtime": "^7.13.9",
+    "axios": "^0.27.2",
+    "mustache": "^4.2.0",
+    "ssh2": "^1.11.0"
   },
   "peerDependencies": {
+    "@material-ui/core": "^4.0.0",
+    "@material-ui/icons": "^4.0.0",
     "react": "^16.0.0 || ^17.0.0",
-    "react-dom": "^16.0.0 || ^17.0.0",
-    "@material-ui/core": "^4.0.0"
+    "react-dom": "^16.0.0 || ^17.0.0"
   },
   "files": [
     "dist"
@@ -110,6 +131,7 @@
     "@babel/preset-react": "^7.12.13",
     "@rollup/plugin-babel": "^5.3.0",
     "@rollup/plugin-commonjs": "^17.1.0",
+    "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^11.2.0",
     "rollup": "^2.40.0",
     "rollup-plugin-peer-deps-external": "^2.2.4",
