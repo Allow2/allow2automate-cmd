@@ -21,7 +21,7 @@ import Box from '@material-ui/core/Box';
 import Paper from '@material-ui/core/Paper';
 import Button from '@material-ui/core/Button';
 import Snackbar from '@material-ui/core/Snackbar';
-import MuiAlert from '@material-ui/core/Alert';
+import Alert from '@material-ui/lab/Alert';
 import ScriptEditor from './ScriptEditor';
 import ScriptList from './ScriptList';
 import RemoteDeviceManager from './RemoteDeviceManager';
@@ -347,14 +347,14 @@ class TabContent extends Component {
                         onClose={this.handleCloseSnackbar}
                         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                     >
-                        <MuiAlert
+                        <Alert
                             onClose={this.handleCloseSnackbar}
                             severity={this.state.snackbar.severity}
                             variant="filled"
                             elevation={6}
                         >
                             {this.state.snackbar.message}
-                        </MuiAlert>
+                        </Alert>
                     </Snackbar>
                 )}
             </div>
