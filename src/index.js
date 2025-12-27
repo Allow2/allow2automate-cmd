@@ -205,7 +205,7 @@ function plugin(context) {
         });
 
         // Test SSH connection
-        context.ipcMain.on('testSSH', async (event, sshConfig) => {
+        context.ipcMain.handle('testSSH', async (event, sshConfig) => {
             try {
                 const result = await scriptManager.testSSHConnection(sshConfig);
                 return [null, result];
