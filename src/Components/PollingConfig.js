@@ -117,7 +117,7 @@ class PollingConfig extends Component {
 
     handleSaveMonitor = () => {
         const script = this.props.scripts?.[this.state.scriptId];
-        const child = this.props.children?.find(c => c.id === this.state.childId);
+        const child = this.props.children && this.props.children[this.state.childId];
 
         const monitor = {
             id: this.state.editingMonitor?.id || `monitor-${Date.now()}`,
@@ -284,7 +284,7 @@ class PollingConfig extends Component {
                                     value={this.state.childId}
                                     onChange={(e) => this.setState({ childId: e.target.value })}
                                 >
-                                    {children?.map(child => (
+                                    {children && Object.values(children).map(child => (
                                         <MenuItem key={child.id} value={child.id}>
                                             {child.name}
                                         </MenuItem>
