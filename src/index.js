@@ -168,7 +168,7 @@ function plugin(context) {
     function setupIPCHandlers(context) {
 
         // Save script
-        context.ipcMain.on('saveScript', async (event, script) => {
+        context.ipcMain.handle('saveScript', async (event, script) => {
             try {
                 state.scripts[script.id] = script;
                 context.configurationUpdate(state);
@@ -179,7 +179,7 @@ function plugin(context) {
         });
 
         // Delete script
-        context.ipcMain.on('deleteScript', async (event, scriptId) => {
+        context.ipcMain.handle('deleteScript', async (event, scriptId) => {
             try {
                 delete state.scripts[scriptId];
                 context.configurationUpdate(state);
@@ -190,7 +190,7 @@ function plugin(context) {
         });
 
         // Execute script
-        context.ipcMain.on('executeScript', async (event, { scriptId, params }) => {
+        context.ipcMain.handle('executeScript', async (event, { scriptId, params }) => {
             try {
                 const script = state.scripts[scriptId];
                 if (!script) {
@@ -215,7 +215,7 @@ function plugin(context) {
         });
 
         // Save SSH config
-        context.ipcMain.on('saveSSHConfig', async (event, config) => {
+        context.ipcMain.handle('saveSSHConfig', async (event, config) => {
             try {
                 state.sshConfigs[config.id] = config;
                 context.configurationUpdate(state);
@@ -226,7 +226,7 @@ function plugin(context) {
         });
 
         // Add trigger
-        context.ipcMain.on('addTrigger', async (event, trigger) => {
+        context.ipcMain.handle('addTrigger', async (event, trigger) => {
             try {
                 state.triggers[trigger.id] = trigger;
                 stateMonitor.addTrigger(trigger);
@@ -238,7 +238,7 @@ function plugin(context) {
         });
 
         // Update trigger
-        context.ipcMain.on('updateTrigger', async (event, { triggerId, updates }) => {
+        context.ipcMain.handle('updateTrigger', async (event, { triggerId, updates }) => {
             try {
                 state.triggers[triggerId] = { ...state.triggers[triggerId], ...updates };
                 stateMonitor.updateTrigger(triggerId, updates);
@@ -250,7 +250,7 @@ function plugin(context) {
         });
 
         // Remove trigger
-        context.ipcMain.on('removeTrigger', async (event, triggerId) => {
+        context.ipcMain.handle('removeTrigger', async (event, triggerId) => {
             try {
                 delete state.triggers[triggerId];
                 stateMonitor.removeTrigger(triggerId);
@@ -262,7 +262,7 @@ function plugin(context) {
         });
 
         // Add monitor
-        context.ipcMain.on('addMonitor', async (event, monitor) => {
+        context.ipcMain.handle('addMonitor', async (event, monitor) => {
             try {
                 state.monitors[monitor.id] = monitor;
                 pollingMonitor.addMonitor(monitor);
@@ -274,7 +274,7 @@ function plugin(context) {
         });
 
         // Update monitor
-        context.ipcMain.on('updateMonitor', async (event, { monitorId, updates }) => {
+        context.ipcMain.handle('updateMonitor', async (event, { monitorId, updates }) => {
             try {
                 state.monitors[monitorId] = { ...state.monitors[monitorId], ...updates };
                 pollingMonitor.updateMonitor(monitorId, updates);
@@ -286,7 +286,7 @@ function plugin(context) {
         });
 
         // Remove monitor
-        context.ipcMain.on('removeMonitor', async (event, monitorId) => {
+        context.ipcMain.handle('removeMonitor', async (event, monitorId) => {
             try {
                 delete state.monitors[monitorId];
                 pollingMonitor.removeMonitor(monitorId);
@@ -298,7 +298,7 @@ function plugin(context) {
         });
 
         // Get monitor status
-        context.ipcMain.on('getMonitorStatus', async (event, monitorId) => {
+        context.ipcMain.handle('getMonitorStatus', async (event, monitorId) => {
             try {
                 const status = pollingMonitor.getStatus(monitorId);
                 return [null, status];
