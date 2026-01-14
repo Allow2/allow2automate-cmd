@@ -104,8 +104,10 @@
     "react": "^16.0.0 || ^17.0.0",
     "react-dom": "^16.0.0 || ^17.0.0"
   },
+  "icon": "./img/cmd-icon.png",
   "files": [
-    "dist"
+    "dist",
+    "img"
   ],
   "devDependencies": {
     "@babel/core": "^7.13.8",
